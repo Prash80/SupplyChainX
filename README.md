@@ -23,7 +23,7 @@ A modern supply chain management system that combines blockchain technology and 
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/SupplyChainX.git
+git clone https://github.com/prash80/SupplyChainX.git
 cd SupplyChainX
 ```
 
