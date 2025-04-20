@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SupplyChainX - Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            background-color: #212529;
+            color: white;
+        }
+        .nav-link {
+            color: rgba(255,255,255,.75);
+        }
+        .nav-link:hover {
+            color: white;
+        }
+        .nav-link.active {
+            color: white;
+            background-color: rgba(255,255,255,.1);
+        }
+        .main-content {
+            padding: 2rem;
+        }
+        .shipment-card {
+            transition: transform 0.2s;
+        }
+        .shipment-card:hover {
+            transform: translateY(-5px);
+        }
+        .prediction-badge {
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3 col-lg-2 sidebar p-3">
+                <div class="d-flex align-items-center mb-4">
+                    <h3 class="mb-0">SupplyChainX</h3>
+                </div>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">
+                            <i class="bi bi-speedometer2 me-2"></i>
+                            Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <i class="bi bi-truck me-2"></i>
+                            Shipments
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <i class="bi bi-graph-up me-2"></i>
+                            Analytics
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <i class="bi bi-gear me-2"></i>
+                            Settings
+                        </a>
+                    </li>
+                </ul>
+                <div class="mt-auto">
+                    <div class="dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle me-2"></i>
+                            {{ username }}
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#">Profile</a></li>
+                            <li><a class="dropdown-item" href="#">Settings</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('login') }}">Logout</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-9 col-lg-10 main-content">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Shipment Dashboard</h2>
+                    <button class="btn btn-primary">
+                        <i class="bi bi-plus-lg me-2"></i>
+                        New Shipment
+                    </button>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body">
+                                <h5 class="card-title">Total Shipments</h5>
+                                <h2 class="card-text">{{ shipments|length }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <h5 class="card-title">On Time</h5>
+                                <h2 class="card-text">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body">
+                                <h5 class="card-title">Delayed</h5>
+                                <h2 class="card-text">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body">
+                                <h5 class="card-title">In Transit</h5>
+                                <h2 class="card-text">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shipments List -->
+                <div class="row">
+                    {% for shipment in shipments %}
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card shipment-card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="card-title mb-0">Shipment #{{ shipment.id }}</h5>
+                                    <span class="badge bg-primary">Status</span>
+                                </div>
+                                <p class="card-text">
+                                    <strong>From:</strong> {{ shipment.origin }}<br>
+                                    <strong>To:</strong> {{ shipment.destination }}<br>
+                                    <strong>ETA:</strong> {{ shipment.eta }}
+                                </p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <button class="btn btn-sm btn-outline-primary" onclick="getPrediction('{{ shipment.id }}')">
+                                        Predict Delay
+                                    </button>
+                                    <span class="prediction-badge badge bg-secondary d-none" id="prediction-{{ shipment.id }}">
+                                        Loading...
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        async function getPrediction(shipmentId) {
+            const badge = document.getElementById(`prediction-${shipmentId}`);
+            badge.classList.remove('d-none');
+            badge.classList.remove('bg-success', 'bg-warning', 'bg-danger');
+            badge.textContent = 'Loading...';
+
+            try {
+                const response = await fetch(`/api/predict-delay/${shipmentId}`);
+                const data = await response.json();
+                
+                if (data.prediction === 0) {
+                    badge.classList.add('bg-success');
+                    badge.textContent = 'On Time';
+                } else if (data.prediction < 24) {
+                    badge.classList.add('bg-warning');
+                    badge.textContent = `${data.prediction}h Delay`;
+                } else {
+                    badge.classList.add('bg-danger');
+                    badge.textContent = `${Math.floor(data.prediction/24)}d Delay`;
+                }
+            } catch (error) {
+                badge.classList.add('bg-danger');
+                badge.textContent = 'Error';
+            }
+        }
+    </script>
+</body>
+</html> 

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Blockchain Ledger</h3>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Block #</th>
+                                    <th>Timestamp</th>
+                                    <th>Shipment ID</th>
+                                    <th>Update Type</th>
+                                    <th>Details</th>
+                                    <th>Hash</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for block in chain %}
+                                <tr>
+                                    <td>{{ block.index }}</td>
+                                    <td>{{ block.timestamp }}</td>
+                                    <td>{{ block.data.shipment_id }}</td>
+                                    <td>{{ block.data.update_type }}</td>
+                                    <td>{{ block.data.details }}</td>
+                                    <td class="text-truncate" style="max-width: 150px;" title="{{ block.hash }}">
+                                        {{ block.hash }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

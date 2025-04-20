@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Shipment Details - {{ shipment.id }}</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Origin</h5>
+                            <p>{{ shipment.origin }}</p>
+                            <h5>Destination</h5>
+                            <p>{{ shipment.destination }}</p>
+                            <h5>Status</h5>
+                            <p class="badge bg-{{ 'success' if shipment.status == 'On Time' else 'warning' if shipment.status == 'In Transit' else 'danger' }}">
+                                {{ shipment.status }}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>ETA</h5>
+                            <p>{{ shipment.eta }}</p>
+                            <h5>Carrier</h5>
+                            <p>{{ shipment.carrier }}</p>
+                            <h5>Priority</h5>
+                            <p>{{ shipment.priority }}</p>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <h5>Shipment Metrics</h5>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h6>Distance</h6>
+                                            <h4>{{ shipment.distance }} km</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h6>Weight</h6>
+                                            <h4>{{ shipment.weight }} kg</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h6>Volume</h6>
+                                            <h4>{{ shipment.volume }} m³</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Delay Prediction</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="delayChart"></canvas>
+                </div>
+            </div>
+            {% if role in ['admin', 'manager'] %}
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>Update Status</h5>
+                </div>
+                <div class="card-body">
+                    <form id="statusForm">
+                        <div class="mb-3">
+                            <label for="status" class="form-label">New Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="In Transit">In Transit</option>
+                                <option value="On Time">On Time</option>
+                                <option value="Delayed">Delayed</option>
+                                <option value="Delivered">Delivered</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Update Status</button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Initialize delay prediction chart
+    const ctx = document.getElementById('delayChart').getContext('2d');
+    const delayChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['On Time', 'Potential Delay'],
+            datasets: [{
+                data: [80, 20], // Example data - replace with actual prediction
+                backgroundColor: ['#28a745', '#dc3545']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+
+    // Handle status update form submission
+    document.getElementById('statusForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        fetch(`/api/shipments/{{ shipment.id }}/update`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Failed to update status');
+            }
+        });
+    });
+</script>
+{% endblock %} 
