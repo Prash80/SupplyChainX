@@ -8,6 +8,23 @@ from blockchain import Blockchain
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # For session management
 
+# Status color mapping function
+def get_status_color(status):
+    status_colors = {
+        'On Time': 'success',
+        'Delayed': 'warning',
+        'In Transit': 'info',
+        'Pending': 'secondary',
+        'Completed': 'primary',
+        'Cancelled': 'danger'
+    }
+    return status_colors.get(status, 'secondary')
+
+# Context processor to make get_status_color available to all templates
+@app.context_processor
+def utility_processor():
+    return dict(get_status_color=get_status_color)
+
 # Initialize blockchain
 blockchain = Blockchain()
 
@@ -99,10 +116,50 @@ def about():
                          username=session.get('username'),
                          role=session.get('role'))
 
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
 @app.route('/api/shipments', methods=['GET'])
 def get_shipments():
     shipments = load_shipments()
     return jsonify(shipments)
+
+@app.route('/api/shipments', methods=['POST'])
+def create_shipment():
+    if 'username' not in session or session['role'] not in ['admin', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    data = request.get_json()
+    shipments = load_shipments()
+    
+    new_shipment = {
+        'id': str(len(shipments) + 1),
+        'origin': data['origin'],
+        'destination': data['destination'],
+        'eta': data['eta'],
+        'status': 'Pending',
+        'progress': 0,
+        'created_at': datetime.now().isoformat(),
+        'last_update': datetime.now().isoformat()
+    }
+    
+    shipments.append(new_shipment)
+    save_shipments(shipments)
+    
+    # Log the creation in blockchain
+    blockchain.log_shipment_update(
+        shipment_id=new_shipment['id'],
+        update_type='creation',
+        details={
+            'created_by': session['username'],
+            'origin': new_shipment['origin'],
+            'destination': new_shipment['destination']
+        }
+    )
+    
+    return jsonify(new_shipment)
 
 @app.route('/api/shipments/<shipment_id>/update', methods=['POST'])
 def update_shipment(shipment_id):
@@ -148,4 +205,5 @@ def get_delay_prediction(shipment_id):
     return jsonify({'error': 'Shipment not found'}), 404
 
 if __name__ == '__main__':
-    app.run(debug=True) 
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port) 
