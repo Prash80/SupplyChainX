@@ -1,9 +1,15 @@
 [
     {
         "index": 0,
-        "timestamp": "2025-04-20T17:58:57.766714",
-        "data": "Genesis Block",
+        "timestamp": "2025-04-20T23:11:58.560868",
+        "data": {
+            "shipment_id": "0",
+            "update_type": "genesis",
+            "details": {
+                "message": "Genesis Block"
+            }
+        },
         "previous_hash": "0",
-        "hash": "15958e47c415bb3fca99127cfa52833940e6a356e33045ac8427867934be9ca1"
+        "hash": "6a1e931c3d279992ee53b28252ccedfd1ef25f50c278ea41bf40e8f739acd416"
     }
 ]

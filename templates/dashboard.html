@@ -6,6 +6,7 @@
     <title>SupplyChainX - Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .sidebar {
             min-height: 100vh;
@@ -35,6 +36,31 @@
             font-size: 0.9rem;
             padding: 0.5rem 1rem;
         }
+        .status-badge {
+            font-size: 0.8rem;
+            padding: 0.4rem 0.8rem;
+        }
+        .progress {
+            height: 0.5rem;
+        }
+        .map-container {
+            height: 300px;
+            background-color: #f8f9fa;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 1rem;
+        }
+        .refresh-btn {
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        .refresh-btn:hover {
+            transform: rotate(180deg);
+        }
     </style>
 </head>
 <body>
@@ -47,27 +73,21 @@
                 </div>
                 <ul class="nav flex-column">
                     <li class="nav-item">
-                        <a class="nav-link active" href="#">
+                        <a class="nav-link active" href="{{ url_for('dashboard') }}">
                             <i class="bi bi-speedometer2 me-2"></i>
                             Dashboard
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
-                            <i class="bi bi-truck me-2"></i>
-                            Shipments
+                        <a class="nav-link" href="{{ url_for('ledger') }}">
+                            <i class="bi bi-journal-text me-2"></i>
+                            Blockchain Ledger
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
-                            <i class="bi bi-graph-up me-2"></i>
-                            Analytics
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">
-                            <i class="bi bi-gear me-2"></i>
-                            Settings
+                        <a class="nav-link" href="{{ url_for('about') }}">
+                            <i class="bi bi-info-circle me-2"></i>
+                            About
                         </a>
                     </li>
                 </ul>
@@ -78,9 +98,6 @@
                             {{ username }}
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="#">Profile</a></li>
-                            <li><a class="dropdown-item" href="#">Settings</a></li>
-                            <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('login') }}">Logout</a></li>
                         </ul>
                     </div>
@@ -91,10 +108,15 @@
             <div class="col-md-9 col-lg-10 main-content">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h2>Shipment Dashboard</h2>
-                    <button class="btn btn-primary">
-                        <i class="bi bi-plus-lg me-2"></i>
-                        New Shipment
-                    </button>
+                    <div>
+                        <button class="btn btn-outline-secondary me-2 refresh-btn" onclick="refreshDashboard()">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newShipmentModal">
+                            <i class="bi bi-plus-lg me-2"></i>
+                            New Shipment
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Stats Cards -->
@@ -103,7 +125,7 @@
                         <div class="card bg-primary text-white">
                             <div class="card-body">
                                 <h5 class="card-title">Total Shipments</h5>
-                                <h2 class="card-text">{{ shipments|length }}</h2>
+                                <h2 class="card-text" id="total-shipments">{{ shipments|length }}</h2>
                             </div>
                         </div>
                     </div>
@@ -111,7 +133,7 @@
                         <div class="card bg-success text-white">
                             <div class="card-body">
                                 <h5 class="card-title">On Time</h5>
-                                <h2 class="card-text">0</h2>
+                                <h2 class="card-text" id="on-time-count">0</h2>
                             </div>
                         </div>
                     </div>
@@ -119,7 +141,7 @@
                         <div class="card bg-warning text-white">
                             <div class="card-body">
                                 <h5 class="card-title">Delayed</h5>
-                                <h2 class="card-text">0</h2>
+                                <h2 class="card-text" id="delayed-count">0</h2>
                             </div>
                         </div>
                     </div>
@@ -127,7 +149,31 @@
                         <div class="card bg-info text-white">
                             <div class="card-body">
                                 <h5 class="card-title">In Transit</h5>
-                                <h2 class="card-text">0</h2>
+                                <h2 class="card-text" id="in-transit-count">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analytics Charts -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Shipment Status Distribution</h5>
+                                <div class="chart-container">
+                                    <canvas id="statusChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Delivery Performance</h5>
+                                <div class="chart-container">
+                                    <canvas id="performanceChart"></canvas>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -141,13 +187,20 @@
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h5 class="card-title mb-0">Shipment #{{ shipment.id }}</h5>
-                                    <span class="badge bg-primary">Status</span>
+                                    <span class="status-badge badge bg-{{ get_status_color(shipment.status) }}">
+                                        {{ shipment.status }}
+                                    </span>
                                 </div>
                                 <p class="card-text">
                                     <strong>From:</strong> {{ shipment.origin }}<br>
                                     <strong>To:</strong> {{ shipment.destination }}<br>
                                     <strong>ETA:</strong> {{ shipment.eta }}
                                 </p>
+                                <div class="progress mb-3">
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ shipment.progress }}%">
+                                        {{ shipment.progress }}%
+                                    </div>
+                                </div>
                                 <div class="d-flex justify-content-between align-items-center">
                                     <button class="btn btn-sm btn-outline-primary" onclick="getPrediction('{{ shipment.id }}')">
                                         Predict Delay
@@ -165,33 +218,138 @@
         </div>
     </div>
 
+    <!-- New Shipment Modal -->
+    <div class="modal fade" id="newShipmentModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">New Shipment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="newShipmentForm">
+                        <div class="mb-3">
+                            <label class="form-label">Origin</label>
+                            <input type="text" class="form-control" name="origin" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Destination</label>
+                            <input type="text" class="form-control" name="destination" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Estimated Delivery Date</label>
+                            <input type="datetime-local" class="form-control" name="eta" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="createShipment()">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        async function getPrediction(shipmentId) {
-            const badge = document.getElementById(`prediction-${shipmentId}`);
-            badge.classList.remove('d-none');
-            badge.classList.remove('bg-success', 'bg-warning', 'bg-danger');
-            badge.textContent = 'Loading...';
-
-            try {
-                const response = await fetch(`/api/predict-delay/${shipmentId}`);
-                const data = await response.json();
-                
-                if (data.prediction === 0) {
-                    badge.classList.add('bg-success');
-                    badge.textContent = 'On Time';
-                } else if (data.prediction < 24) {
-                    badge.classList.add('bg-warning');
-                    badge.textContent = `${data.prediction}h Delay`;
-                } else {
-                    badge.classList.add('bg-danger');
-                    badge.textContent = `${Math.floor(data.prediction/24)}d Delay`;
-                }
-            } catch (error) {
-                badge.classList.add('bg-danger');
-                badge.textContent = 'Error';
-            }
+        // Function to get prediction for a shipment
+        function getPrediction(shipmentId) {
+            const predictionBadge = document.getElementById(`prediction-${shipmentId}`);
+            predictionBadge.classList.remove('d-none');
+            
+            fetch(`/api/predict-delay/${shipmentId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        predictionBadge.textContent = 'Error: ' + data.error;
+                        predictionBadge.classList.remove('bg-success', 'bg-warning');
+                        predictionBadge.classList.add('bg-danger');
+                    } else {
+                        const prediction = data.prediction;
+                        if (prediction > 0) {
+                            predictionBadge.textContent = `Likely to be delayed by ${Math.round(prediction)} hours`;
+                            predictionBadge.classList.remove('bg-success', 'bg-danger');
+                            predictionBadge.classList.add('bg-warning');
+                        } else {
+                            predictionBadge.textContent = 'On Time';
+                            predictionBadge.classList.remove('bg-warning', 'bg-danger');
+                            predictionBadge.classList.add('bg-success');
+                        }
+                    }
+                })
+                .catch(error => {
+                    predictionBadge.textContent = 'Error getting prediction';
+                    predictionBadge.classList.remove('bg-success', 'bg-warning');
+                    predictionBadge.classList.add('bg-danger');
+                    console.error('Error:', error);
+                });
         }
+
+        // Function to refresh dashboard
+        function refreshDashboard() {
+            window.location.reload();
+        }
+
+        // Initialize charts
+        document.addEventListener('DOMContentLoaded', function() {
+            // Update shipment counts
+            const shipments = {{ shipments|tojson|safe }};
+            const onTimeCount = shipments.filter(s => s.status === 'On Time').length;
+            const delayedCount = shipments.filter(s => s.status === 'Delayed').length;
+            const inTransitCount = shipments.filter(s => s.status === 'In Transit').length;
+
+            document.getElementById('on-time-count').textContent = onTimeCount;
+            document.getElementById('delayed-count').textContent = delayedCount;
+            document.getElementById('in-transit-count').textContent = inTransitCount;
+
+            // Initialize status chart
+            const statusCtx = document.getElementById('statusChart').getContext('2d');
+            new Chart(statusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['On Time', 'Delayed', 'In Transit', 'Pending', 'Completed'],
+                    datasets: [{
+                        data: [
+                            onTimeCount,
+                            delayedCount,
+                            inTransitCount,
+                            shipments.filter(s => s.status === 'Pending').length,
+                            shipments.filter(s => s.status === 'Completed').length
+                        ],
+                        backgroundColor: [
+                            '#28a745',
+                            '#ffc107',
+                            '#17a2b8',
+                            '#6c757d',
+                            '#007bff'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+
+            // Initialize performance chart
+            const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+            new Chart(performanceCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'On Time Deliveries',
+                        data: [12, 19, 3, 5, 2, 3, 7],
+                        borderColor: '#28a745',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        });
     </script>
 </body>
 </html> 
